@@ -1,4 +1,4 @@
-import { PLATFORM_LABELS, PROMO_TYPE_LABELS, normalizeText, type Platform, type PromoType } from '@cp/shared';
+import { categoryLabel, PLATFORM_LABELS, PROMO_TYPE_LABELS, normalizeText, type Platform, type PromoType } from '@cp/shared';
 import { env, hasDatabase } from '../config.ts';
 import { logger } from '../logger.ts';
 import { db, must } from './db.ts';
@@ -26,6 +26,7 @@ interface PromoRow {
   search_text: string;
   deal_quality: string | null;
   is_lowest_30d: boolean;
+  category_slug: string | null;
 }
 
 interface SubRow {
@@ -33,6 +34,7 @@ interface SubRow {
   keywords: string[];
   platforms: Platform[];
   types: PromoType[];
+  categories: string[];
   min_discount_pct: number;
 }
 
@@ -43,15 +45,19 @@ export function matches(sub: SubRow, p: PromoRow): boolean {
   if (p.deal_quality === 'inflated') return false;
   if (sub.platforms.length && !sub.platforms.includes(p.platform)) return false;
   if (sub.types.length && !sub.types.includes(p.type)) return false;
+  if (sub.categories.length && !sub.categories.includes(p.category_slug ?? 'khac')) return false;
   const pct = p.discount_pct ?? (p.discount_type === 'percent' ? Number(p.discount_value) : null);
   if (sub.min_discount_pct > 0 && (pct == null || pct < sub.min_discount_pct)) return false;
-  if (sub.keywords.length === 0) return sub.min_discount_pct > 0 || sub.platforms.length > 0 || sub.types.length > 0;
+  if (sub.keywords.length === 0) {
+    return sub.min_discount_pct > 0 || sub.platforms.length > 0 || sub.types.length > 0 || sub.categories.length > 0;
+  }
   return sub.keywords.some((k) => p.search_text.includes(normalizeText(k)));
 }
 
 export function formatPromo(p: PromoRow): string {
   const link = env.PUBLIC_SITE_URL ? `${env.PUBLIC_SITE_URL.replace(/\/$/, '')}/km/${p.id}` : p.affiliate_url ?? p.url;
-  const lines = [`<b>${PLATFORM_LABELS[p.platform]}</b> · ${PROMO_TYPE_LABELS[p.type]}`, escapeHtml(p.title)];
+  const cat = categoryLabel(p.category_slug);
+  const lines = [`<b>${PLATFORM_LABELS[p.platform]}</b> · ${PROMO_TYPE_LABELS[p.type]}${cat ? ` · ${cat}` : ''}`, escapeHtml(p.title)];
   if (p.sale_price != null) {
     lines.push(`💰 ${vnd(p.sale_price)}${p.original_price ? ` <s>${vnd(p.original_price)}</s>` : ''}${p.discount_pct ? ` (-${p.discount_pct}%)` : ''}`);
     if (p.deal_quality === 'real') lines.push(p.is_lowest_30d ? '✅ Giảm thật · thấp nhất 30 ngày' : '✅ Giảm thật so với giá 30 ngày qua');
@@ -79,7 +85,7 @@ export async function notifyNewPromotions(): Promise<number> {
   const promos = must(
     await db()
       .from('promotions')
-      .select('id, platform, type, title, code, discount_type, discount_value, max_discount, min_spend, sale_price, original_price, discount_pct, end_at, url, affiliate_url, search_text, deal_quality, is_lowest_30d')
+      .select('id, platform, type, title, code, discount_type, discount_value, max_discount, min_spend, sale_price, original_price, discount_pct, end_at, url, affiliate_url, search_text, deal_quality, is_lowest_30d, category_slug')
       .is('notified_at', null)
       .eq('status', 'active')
       .gte('first_seen_at', since)
@@ -90,7 +96,7 @@ export async function notifyNewPromotions(): Promise<number> {
   if (!promos.length) return 0;
 
   const subs = must(
-    await db().from('subscriptions').select('telegram_chat_id, keywords, platforms, types, min_discount_pct').eq('active', true),
+    await db().from('subscriptions').select('telegram_chat_id, keywords, platforms, types, categories, min_discount_pct').eq('active', true),
     'select subscriptions',
   ) as SubRow[];
 

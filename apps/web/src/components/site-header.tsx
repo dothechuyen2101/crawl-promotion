@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 const NAV = [
   { href: '/', label: 'Tất cả' },
+  { href: '/danh-muc', label: 'Danh mục' },
   { href: '/voucher', label: 'Mã giảm giá' },
   { href: '/flash-sale', label: 'Flash sale' },
   { href: '/giam-sau', label: 'Giảm sâu' },

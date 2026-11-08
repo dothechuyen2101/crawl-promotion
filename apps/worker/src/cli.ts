@@ -6,6 +6,7 @@ import { fetch } from 'undici';
 import { env } from './config.ts';
 import { db } from './core/db.ts';
 import { BrowserPool } from './core/browser.ts';
+import { reclassifyAll, refreshShopCategories } from './core/categories.ts';
 import { createContext } from './core/context.ts';
 import { runSource } from './core/runner.ts';
 import { logger } from './logger.ts';
@@ -22,6 +23,7 @@ const HELP = `Cách dùng: pnpm worker cli <lệnh> [tuỳ chọn]
   login <sàn>                            Mở trình duyệt thật bằng profile của worker để bạn đăng nhập
                                          (dùng tài khoản phụ). Đóng cửa sổ khi xong.
   recon <url> [--match <chuỗi>]          Mở trang và in các request JSON (để tìm API khi sàn đổi giao diện)
+  reclassify                             Suy ra nhóm của shop rồi phân loại lại toàn bộ khuyến mãi & sản phẩm
   make-admin <email>                     Tạo (nếu chưa có) tài khoản và cấp quyền quản trị cho /admin
   telegram-webhook <url-web>             Đăng ký webhook bot Telegram (vd https://ten-app.vercel.app)
 `;
@@ -152,6 +154,12 @@ async function main() {
           await page.waitForTimeout(3000);
         });
         await pool.closeAll();
+        break;
+      }
+      case 'reclassify': {
+        const shops = await refreshShopCategories();
+        const changed = await reclassifyAll();
+        console.log(`Shop đã suy ra nhóm: ${shops} · khuyến mãi đổi nhóm: ${changed.promotions} · sản phẩm đổi nhóm: ${changed.products}`);
         break;
       }
       case 'make-admin': {

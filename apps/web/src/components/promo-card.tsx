@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { PROMO_TYPE_LABELS } from '@cp/shared';
+import { CATEGORIES, isCategorySlug, PROMO_TYPE_LABELS } from '@cp/shared';
 import { discountLabel, timeLeft, vnd } from '@/lib/format';
 import type { PromoListItem } from '@/lib/promotions';
 import { CopyButton } from './copy-button';
@@ -29,6 +29,11 @@ export function PromoCard({ p }: { p: PromoListItem }) {
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
             <PlatformBadge platform={p.platform} />
             <span className="text-[11px] text-muted">{PROMO_TYPE_LABELS[p.type]}</span>
+            {isCategorySlug(p.category_slug) && p.category_slug !== 'khac' && (
+              <span className="rounded bg-bg px-1 text-[11px] text-muted">
+                {CATEGORIES[p.category_slug].emoji} {CATEGORIES[p.category_slug].name}
+              </span>
+            )}
             {p.new_user_only && <span className="text-[11px] text-muted">· Người dùng mới</span>}
             {Boolean(cond.appOnly) && <span className="text-[11px] text-muted">· Chỉ trên app</span>}
           </div>

@@ -133,28 +133,28 @@ isOneToOne: false
                   ]
                 },"products": {
                   Row: {
-                    "category": string | null,"current_price": number | null,"external_id": string,"first_seen_at": string,"id": string,"image_url": string | null,"last_seen_at": string,"original_price": number | null,"platform": Database["public"]['Enums']["platform"],"search_text": string,"shop_id": string | null,"shop_name": string | null,"title": string,"url": string
+                    "category": string | null,"category_slug": string | null,"current_price": number | null,"external_id": string,"first_seen_at": string,"id": string,"image_url": string | null,"last_seen_at": string,"original_price": number | null,"platform": Database["public"]['Enums']["platform"],"search_text": string,"shop_id": string | null,"shop_name": string | null,"title": string,"url": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "category"?: string | null,"current_price"?: number | null,"external_id": string,"first_seen_at"?: string,"id"?: string,"image_url"?: string | null,"last_seen_at"?: string,"original_price"?: number | null,"platform": Database["public"]['Enums']["platform"],"search_text"?: string,"shop_id"?: string | null,"shop_name"?: string | null,"title": string,"url": string
+                    "category"?: string | null,"category_slug"?: string | null,"current_price"?: number | null,"external_id": string,"first_seen_at"?: string,"id"?: string,"image_url"?: string | null,"last_seen_at"?: string,"original_price"?: number | null,"platform": Database["public"]['Enums']["platform"],"search_text"?: string,"shop_id"?: string | null,"shop_name"?: string | null,"title": string,"url": string
                   }
                   Update: {
-                    "category"?: string | null,"current_price"?: number | null,"external_id"?: string,"first_seen_at"?: string,"id"?: string,"image_url"?: string | null,"last_seen_at"?: string,"original_price"?: number | null,"platform"?: Database["public"]['Enums']["platform"],"search_text"?: string,"shop_id"?: string | null,"shop_name"?: string | null,"title"?: string,"url"?: string
+                    "category"?: string | null,"category_slug"?: string | null,"current_price"?: number | null,"external_id"?: string,"first_seen_at"?: string,"id"?: string,"image_url"?: string | null,"last_seen_at"?: string,"original_price"?: number | null,"platform"?: Database["public"]['Enums']["platform"],"search_text"?: string,"shop_id"?: string | null,"shop_name"?: string | null,"title"?: string,"url"?: string
                   }
                   Relationships: [
                     
                   ]
                 },"promotions": {
                   Row: {
-                    "affiliate_url": string | null,"applicable_categories": (string)[],"category": string | null,"city": string | null,"code": string | null,"conditions": NonNullable<Json>,"content_hash": string,"deal_quality": string | null,"description": string | null,"discount_pct": number | null,"discount_type": Database["public"]['Enums']["discount_type"] | null,"discount_value": number | null,"end_at": string | null,"external_id": string,"first_seen_at": string,"id": string,"image_url": string | null,"is_cashback": boolean,"is_lowest_30d": boolean,"last_seen_at": string,"max_discount": number | null,"min_spend": number | null,"new_user_only": boolean,"notified_at": string | null,"original_price": number | null,"payment_method": string | null,"platform": Database["public"]['Enums']["platform"],"price_median_30d": number | null,"price_min_30d": number | null,"product_external_id": string | null,"raw": Json | null,"requires_collect": boolean,"sale_price": number | null,"scope": Database["public"]['Enums']["voucher_scope"] | null,"search_text": string,"shop_id": string | null,"shop_name": string | null,"source": string,"stack_group": string | null,"start_at": string | null,"status": Database["public"]['Enums']["promo_status"],"title": string,"type": Database["public"]['Enums']["promo_type"],"updated_at": string,"url": string,"usage_left_pct": number | null
+                    "affiliate_url": string | null,"applicable_categories": (string)[],"category": string | null,"category_slug": string | null,"city": string | null,"code": string | null,"conditions": NonNullable<Json>,"content_hash": string,"deal_quality": string | null,"description": string | null,"discount_pct": number | null,"discount_type": Database["public"]['Enums']["discount_type"] | null,"discount_value": number | null,"end_at": string | null,"external_id": string,"first_seen_at": string,"id": string,"image_url": string | null,"is_cashback": boolean,"is_lowest_30d": boolean,"last_seen_at": string,"max_discount": number | null,"min_spend": number | null,"new_user_only": boolean,"notified_at": string | null,"original_price": number | null,"payment_method": string | null,"platform": Database["public"]['Enums']["platform"],"price_median_30d": number | null,"price_min_30d": number | null,"product_external_id": string | null,"raw": Json | null,"requires_collect": boolean,"sale_price": number | null,"scope": Database["public"]['Enums']["voucher_scope"] | null,"search_text": string,"shop_id": string | null,"shop_name": string | null,"source": string,"stack_group": string | null,"start_at": string | null,"status": Database["public"]['Enums']["promo_status"],"title": string,"type": Database["public"]['Enums']["promo_type"],"updated_at": string,"url": string,"usage_left_pct": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "affiliate_url"?: string | null,"applicable_categories"?: (string)[],"category"?: string | null,"city"?: string | null,"code"?: string | null,"conditions"?: NonNullable<Json>,"content_hash": string,"deal_quality"?: string | null,"description"?: string | null,"discount_pct"?: never,"discount_type"?: Database["public"]['Enums']["discount_type"] | null,"discount_value"?: number | null,"end_at"?: string | null,"external_id": string,"first_seen_at"?: string,"id"?: string,"image_url"?: string | null,"is_cashback"?: boolean,"is_lowest_30d"?: boolean,"last_seen_at"?: string,"max_discount"?: number | null,"min_spend"?: number | null,"new_user_only"?: boolean,"notified_at"?: string | null,"original_price"?: number | null,"payment_method"?: string | null,"platform": Database["public"]['Enums']["platform"],"price_median_30d"?: number | null,"price_min_30d"?: number | null,"product_external_id"?: string | null,"raw"?: Json | null,"requires_collect"?: boolean,"sale_price"?: number | null,"scope"?: Database["public"]['Enums']["voucher_scope"] | null,"search_text"?: string,"shop_id"?: string | null,"shop_name"?: string | null,"source": string,"stack_group"?: string | null,"start_at"?: string | null,"status"?: Database["public"]['Enums']["promo_status"],"title": string,"type": Database["public"]['Enums']["promo_type"],"updated_at"?: string,"url": string,"usage_left_pct"?: number | null
+                    "affiliate_url"?: string | null,"applicable_categories"?: (string)[],"category"?: string | null,"category_slug"?: string | null,"city"?: string | null,"code"?: string | null,"conditions"?: NonNullable<Json>,"content_hash": string,"deal_quality"?: string | null,"description"?: string | null,"discount_pct"?: never,"discount_type"?: Database["public"]['Enums']["discount_type"] | null,"discount_value"?: number | null,"end_at"?: string | null,"external_id": string,"first_seen_at"?: string,"id"?: string,"image_url"?: string | null,"is_cashback"?: boolean,"is_lowest_30d"?: boolean,"last_seen_at"?: string,"max_discount"?: number | null,"min_spend"?: number | null,"new_user_only"?: boolean,"notified_at"?: string | null,"original_price"?: number | null,"payment_method"?: string | null,"platform": Database["public"]['Enums']["platform"],"price_median_30d"?: number | null,"price_min_30d"?: number | null,"product_external_id"?: string | null,"raw"?: Json | null,"requires_collect"?: boolean,"sale_price"?: number | null,"scope"?: Database["public"]['Enums']["voucher_scope"] | null,"search_text"?: string,"shop_id"?: string | null,"shop_name"?: string | null,"source": string,"stack_group"?: string | null,"start_at"?: string | null,"status"?: Database["public"]['Enums']["promo_status"],"title": string,"type": Database["public"]['Enums']["promo_type"],"updated_at"?: string,"url": string,"usage_left_pct"?: number | null
                   }
                   Update: {
-                    "affiliate_url"?: string | null,"applicable_categories"?: (string)[],"category"?: string | null,"city"?: string | null,"code"?: string | null,"conditions"?: NonNullable<Json>,"content_hash"?: string,"deal_quality"?: string | null,"description"?: string | null,"discount_pct"?: never,"discount_type"?: Database["public"]['Enums']["discount_type"] | null,"discount_value"?: number | null,"end_at"?: string | null,"external_id"?: string,"first_seen_at"?: string,"id"?: string,"image_url"?: string | null,"is_cashback"?: boolean,"is_lowest_30d"?: boolean,"last_seen_at"?: string,"max_discount"?: number | null,"min_spend"?: number | null,"new_user_only"?: boolean,"notified_at"?: string | null,"original_price"?: number | null,"payment_method"?: string | null,"platform"?: Database["public"]['Enums']["platform"],"price_median_30d"?: number | null,"price_min_30d"?: number | null,"product_external_id"?: string | null,"raw"?: Json | null,"requires_collect"?: boolean,"sale_price"?: number | null,"scope"?: Database["public"]['Enums']["voucher_scope"] | null,"search_text"?: string,"shop_id"?: string | null,"shop_name"?: string | null,"source"?: string,"stack_group"?: string | null,"start_at"?: string | null,"status"?: Database["public"]['Enums']["promo_status"],"title"?: string,"type"?: Database["public"]['Enums']["promo_type"],"updated_at"?: string,"url"?: string,"usage_left_pct"?: number | null
+                    "affiliate_url"?: string | null,"applicable_categories"?: (string)[],"category"?: string | null,"category_slug"?: string | null,"city"?: string | null,"code"?: string | null,"conditions"?: NonNullable<Json>,"content_hash"?: string,"deal_quality"?: string | null,"description"?: string | null,"discount_pct"?: never,"discount_type"?: Database["public"]['Enums']["discount_type"] | null,"discount_value"?: number | null,"end_at"?: string | null,"external_id"?: string,"first_seen_at"?: string,"id"?: string,"image_url"?: string | null,"is_cashback"?: boolean,"is_lowest_30d"?: boolean,"last_seen_at"?: string,"max_discount"?: number | null,"min_spend"?: number | null,"new_user_only"?: boolean,"notified_at"?: string | null,"original_price"?: number | null,"payment_method"?: string | null,"platform"?: Database["public"]['Enums']["platform"],"price_median_30d"?: number | null,"price_min_30d"?: number | null,"product_external_id"?: string | null,"raw"?: Json | null,"requires_collect"?: boolean,"sale_price"?: number | null,"scope"?: Database["public"]['Enums']["voucher_scope"] | null,"search_text"?: string,"shop_id"?: string | null,"shop_name"?: string | null,"source"?: string,"stack_group"?: string | null,"start_at"?: string | null,"status"?: Database["public"]['Enums']["promo_status"],"title"?: string,"type"?: Database["public"]['Enums']["promo_type"],"updated_at"?: string,"url"?: string,"usage_left_pct"?: number | null
                   }
                   Relationships: [
                     
@@ -207,6 +207,20 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"shop_categories": {
+                  Row: {
+                    "category_slug": string,"platform": Database["public"]['Enums']["platform"],"samples": number,"share": number,"shop_key": string,"shop_name": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "category_slug": string,"platform": Database["public"]['Enums']["platform"],"samples": number,"share": number,"shop_key": string,"shop_name": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "category_slug"?: string,"platform"?: Database["public"]['Enums']["platform"],"samples"?: number,"share"?: number,"shop_key"?: string,"shop_name"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"source_settings": {
                   Row: {
                     "consecutive_failures": number,"enabled": boolean,"last_error": string | null,"last_success_at": string | null,"source_id": string,"updated_at": string
@@ -223,14 +237,14 @@ isOneToOne: false
                   ]
                 },"subscriptions": {
                   Row: {
-                    "active": boolean,"created_at": string,"id": number,"keywords": (string)[],"min_discount_pct": number,"platforms": (Database["public"]['Enums']["platform"])[],"telegram_chat_id": number,"types": (Database["public"]['Enums']["promo_type"])[],"updated_at": string
+                    "active": boolean,"categories": (string)[],"created_at": string,"id": number,"keywords": (string)[],"min_discount_pct": number,"platforms": (Database["public"]['Enums']["platform"])[],"telegram_chat_id": number,"types": (Database["public"]['Enums']["promo_type"])[],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"created_at"?: string,"id"?: never,"keywords"?: (string)[],"min_discount_pct"?: number,"platforms"?: (Database["public"]['Enums']["platform"])[],"telegram_chat_id": number,"types"?: (Database["public"]['Enums']["promo_type"])[],"updated_at"?: string
+                    "active"?: boolean,"categories"?: (string)[],"created_at"?: string,"id"?: never,"keywords"?: (string)[],"min_discount_pct"?: number,"platforms"?: (Database["public"]['Enums']["platform"])[],"telegram_chat_id": number,"types"?: (Database["public"]['Enums']["promo_type"])[],"updated_at"?: string
                   }
                   Update: {
-                    "active"?: boolean,"created_at"?: string,"id"?: never,"keywords"?: (string)[],"min_discount_pct"?: number,"platforms"?: (Database["public"]['Enums']["platform"])[],"telegram_chat_id"?: number,"types"?: (Database["public"]['Enums']["promo_type"])[],"updated_at"?: string
+                    "active"?: boolean,"categories"?: (string)[],"created_at"?: string,"id"?: never,"keywords"?: (string)[],"min_discount_pct"?: number,"platforms"?: (Database["public"]['Enums']["platform"])[],"telegram_chat_id"?: number,"types"?: (Database["public"]['Enums']["promo_type"])[],"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -271,6 +285,11 @@ isOneToOne: false
           Functions: {
             "apply_deal_quality":
 { Args: { "items": Json }; Returns: number
+                           },
+"category_counts":
+{ Args: { "p_platform"?: Database["public"]['Enums']["platform"],"p_type"?: Database["public"]['Enums']["promo_type"] }; Returns: {
+              "n": number,"slug": string
+            }[]
                            },
 "cleanup_transient":
 { Args: Record<PropertyKey, never>; Returns: undefined

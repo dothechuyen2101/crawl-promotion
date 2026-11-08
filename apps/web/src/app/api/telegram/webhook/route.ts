@@ -1,7 +1,10 @@
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import {
+  CATEGORIES,
+  CATEGORY_SLUGS,
   HANOI_DISTRICTS,
+  isCategorySlug,
   normalizeText,
   PLATFORM_LABELS,
   PLATFORMS,
@@ -22,6 +25,7 @@ const HELP = [
   '/san shopee,tiki — chỉ nhận từ các sàn này (/san tatca để bỏ lọc)',
   '/loai voucher,flash_sale — chỉ nhận loại này (voucher, flash_sale, deal, campaign; /loai tatca)',
   '/giam 50 — chỉ nhận khuyến mãi giảm từ 50%',
+  '/nhom tra-sua,quan-ao — chỉ nhận các nhóm sản phẩm này (/nhom tatca để bỏ lọc; /danhmuc xem danh sách)',
   '/caidat — xem cài đặt hiện tại',
   '/tatthongbao — tạm dừng · /batthongbao — bật lại',
   '',
@@ -50,15 +54,15 @@ function secretOk(req: NextRequest): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-type Sub = { keywords: string[]; platforms: Platform[]; types: PromoType[]; min_discount_pct: number; active: boolean };
+type Sub = { keywords: string[]; platforms: Platform[]; types: PromoType[]; categories: string[]; min_discount_pct: number; active: boolean };
 
 async function getSub(chatId: number): Promise<Sub> {
   const { data } = await adminClient()
     .from('subscriptions')
-    .select('keywords, platforms, types, min_discount_pct, active')
+    .select('keywords, platforms, types, categories, min_discount_pct, active')
     .eq('telegram_chat_id', chatId)
     .maybeSingle();
-  return data ?? { keywords: [], platforms: [], types: [], min_discount_pct: 0, active: true };
+  return data ?? { keywords: [], platforms: [], types: [], categories: [], min_discount_pct: 0, active: true };
 }
 
 async function saveSub(chatId: number, patch: Partial<Sub>) {
@@ -74,6 +78,7 @@ function describe(s: Sub): string {
     `Từ khoá: ${s.keywords.length ? s.keywords.map(esc).join(', ') : '(chưa có)'}`,
     `Sàn: ${s.platforms.length ? s.platforms.map((p) => PLATFORM_LABELS[p]).join(', ') : 'tất cả'}`,
     `Loại: ${s.types.length ? s.types.map((t) => PROMO_TYPE_LABELS[t]).join(', ') : 'tất cả'}`,
+    `Nhóm: ${s.categories.length ? s.categories.filter(isCategorySlug).map((c) => `${CATEGORIES[c].emoji} ${CATEGORIES[c].name}`).join(', ') : 'tất cả'}`,
     `Giảm tối thiểu: ${s.min_discount_pct ? `${s.min_discount_pct}%` : 'không giới hạn'}`,
   ].join('\n');
 }
@@ -116,6 +121,22 @@ async function handle(chatId: number, text: string) {
       await saveSub(chatId, { types: ts });
       return reply(chatId, `Loại: ${ts.length ? ts.map((t) => PROMO_TYPE_LABELS[t]).join(', ') : 'tất cả'}`);
     }
+    case 'nhom': {
+      const raw = arg.split(/[,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+      const cats = raw.includes('tatca') ? [] : raw.filter(isCategorySlug);
+      const bad = raw.filter((x) => x !== 'tatca' && !isCategorySlug(x));
+      await saveSub(chatId, { categories: cats });
+      return reply(
+        chatId,
+        `Nhóm: ${cats.length ? cats.map((c) => `${CATEGORIES[c].emoji} ${CATEGORIES[c].name}`).join(', ') : 'tất cả'}` +
+          (bad.length ? `\nKhông hiểu: ${esc(bad.join(', '))} — gõ /danhmuc để xem mã nhóm.` : ''),
+      );
+    }
+    case 'danhmuc':
+      return reply(
+        chatId,
+        ['<b>Mã nhóm sản phẩm</b> (dùng với /nhom):', ...CATEGORY_SLUGS.map((c) => `${CATEGORIES[c].emoji} <code>${c}</code> — ${CATEGORIES[c].name}`)].join('\n'),
+      );
     case 'giam': {
       const n = Math.min(Math.max(Number(arg.replace('%', '')) || 0, 0), 95);
       await saveSub(chatId, { min_discount_pct: n });

@@ -1,5 +1,6 @@
-import { normalizeText, priceInsight, type NormalizedPromotion, type Platform, type PromoType } from '@cp/shared';
+import { normalizeText, priceInsight, type CategorySlug, type NormalizedPromotion, type Platform, type PromoType } from '@cp/shared';
 import type { Json } from '@cp/shared/database';
+import { categorize, shopCategoryMap } from './categories.ts';
 import { check, db, must } from './db.ts';
 import { contentHash } from './hash.ts';
 
@@ -13,7 +14,7 @@ function statusOf(p: NormalizedPromotion, now: Date): 'active' | 'expired' | 'up
   return 'active';
 }
 
-export function promotionRow(p: NormalizedPromotion, sourceId: string, now = new Date()) {
+export function promotionRow(p: NormalizedPromotion, sourceId: string, now = new Date(), shops: Map<string, CategorySlug> = new Map()) {
   const content = {
     title: p.title,
     description: p.description ?? null,
@@ -52,6 +53,10 @@ export function promotionRow(p: NormalizedPromotion, sourceId: string, now = new
     ...content,
     raw: (p.raw ?? null) as Json,
     search_text: normalizeText([p.title, p.shopName, p.code].filter(Boolean).join(' ')),
+    category_slug: categorize(
+      { title: p.title, category: p.category, shopName: p.shopName, description: p.description, platform: p.platform, scope: p.scope, paymentMethod: p.paymentMethod, type: p.type },
+      shops,
+    ),
     status: statusOf(p, now),
     content_hash: contentHash(content),
     last_seen_at: now.toISOString(),
@@ -71,7 +76,9 @@ export async function upsertPromotions(items: NormalizedPromotion[], sourceId: s
   // Gộp trùng trong cùng lô (bản sau thắng).
   const byKey = new Map<string, NormalizedPromotion>();
   for (const p of items) byKey.set(`${p.platform}|${p.type}|${p.externalId}`, p);
-  const rows = [...byKey.values()].map((p) => promotionRow(p, sourceId));
+  const shops = await shopCategoryMap();
+  const now = new Date();
+  const rows = [...byKey.values()].map((p) => promotionRow(p, sourceId, now, shops));
 
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
@@ -123,6 +130,7 @@ export async function upsertProductsFrom(items: NormalizedPromotion[]): Promise<
   }
   if (products.size === 0) return 0;
   const list = [...products.values()];
+  const shops = await shopCategoryMap();
   let historyRows = 0;
   const now = new Date().toISOString();
 
@@ -158,6 +166,7 @@ export async function upsertProductsFrom(items: NormalizedPromotion[]): Promise<
               current_price: p.salePrice,
               original_price: p.originalPrice ?? null,
               search_text: normalizeText([p.title, p.shopName].filter(Boolean).join(' ')),
+              category_slug: categorize({ title: p.title, category: p.category, shopName: p.shopName, platform: p.platform }, shops),
               last_seen_at: now,
             })),
             { onConflict: 'platform,external_id' },

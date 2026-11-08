@@ -1,18 +1,19 @@
 import Link from 'next/link';
-import { PLATFORM_LABELS, PLATFORMS, PROMO_TYPE_LABELS, PROMO_TYPES, type PromoType } from '@cp/shared';
-import { listPromotions, parseFilter, SORTS, type PromoFilter } from '@/lib/promotions';
+import { CATEGORIES, CATEGORY_SLUGS, PLATFORM_LABELS, PLATFORMS, PROMO_TYPE_LABELS, PROMO_TYPES, type PromoType } from '@cp/shared';
+import { categoryCounts, listPromotions, parseFilter, SORTS, type PromoFilter } from '@/lib/promotions';
 import { serverClient } from '@/lib/supabase/server';
 import { PromoCard } from './promo-card';
 
 type SP = Record<string, string | string[] | undefined>;
 
-type Patch = Partial<Record<'san' | 'loai' | 'sx' | 'trang' | 'q' | 'that', string | undefined>>;
+type Patch = Partial<Record<'san' | 'loai' | 'sx' | 'trang' | 'q' | 'that' | 'nhom', string | undefined>>;
 
 /** Tạo link giữ nguyên bộ lọc hiện tại, ghi đè bằng `patch` (giá trị rỗng = bỏ). Đổi bộ lọc thì về trang 1. */
 function href(base: string, f: PromoFilter, fixedType: PromoType | undefined, patch: Patch) {
   const params = new URLSearchParams();
   const merged: Patch = {
     san: f.platform,
+    nhom: f.category,
     loai: fixedType ? undefined : f.type,
     sx: f.sort === 'moi' ? undefined : f.sort,
     q: f.q,
@@ -39,7 +40,12 @@ export async function FeedPage({
   const sp = await searchParams;
   const f = parseFilter(sp, fixedType);
   const db = await serverClient();
-  const { items, total, page, pageSize } = await listPromotions(db, f);
+  const [{ items, total, page, pageSize }, counts] = await Promise.all([listPromotions(db, f), categoryCounts(db, f)]);
+  // Nhóm có khuyến mãi, nhiều trước; "Mã toàn sàn" và "Khác" để cuối.
+  const cats = CATEGORY_SLUGS.filter((c) => (counts.get(c) ?? 0) > 0 || c === f.category).sort((a, b) => {
+    const tail = (x: string) => (x === 'khac' ? 2 : x === 'toan-san' ? 1 : 0);
+    return tail(a) - tail(b) || (counts.get(b) ?? 0) - (counts.get(a) ?? 0);
+  });
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const link = (patch: Patch) => href(basePath, f, fixedType, patch);
   const chip = (active: boolean) =>
@@ -54,6 +60,7 @@ export async function FeedPage({
         </div>
         <form action={basePath} className="flex w-full gap-2 sm:w-auto">
           {f.platform && <input type="hidden" name="san" value={f.platform} />}
+          {f.category && <input type="hidden" name="nhom" value={f.category} />}
           {f.sort !== 'moi' && <input type="hidden" name="sx" value={f.sort} />}
           <input
             name="q"
@@ -75,6 +82,19 @@ export async function FeedPage({
           </Link>
         ))}
       </div>
+
+      {cats.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+          <Link href={link({ nhom: '' })} className={chip(!f.category)}>
+            Mọi nhóm
+          </Link>
+          {cats.map((c) => (
+            <Link key={c} href={link({ nhom: c })} className={chip(f.category === c)}>
+              {CATEGORIES[c].emoji} {CATEGORIES[c].name} <span className="opacity-60">{counts.get(c) ?? 0}</span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {!fixedType &&

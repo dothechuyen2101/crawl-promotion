@@ -33,6 +33,15 @@ Chạy nền bằng Docker: `docker compose up -d --build worker`.
 Web: `pnpm web dev` (http://localhost:3000). Trang chính: `/`, `/voucher`, `/flash-sale`, `/giam-sau`, `/chien-dich`,
 `/tim-gia`, `/admin`. Kiểm thử nhanh trang admin: `node apps/web/scripts/admin-smoke.mjs` (tạo admin tạm rồi xoá).
 
+## Nhóm sản phẩm
+
+22 nhóm (trà sữa, đồ ăn, quần áo, phụ kiện điện thoại, mỹ phẩm, mã toàn sàn…) định nghĩa trong
+`packages/shared/src/categories.ts`. Worker phân loại bằng từ khoá có trọng số trên danh mục gốc của sàn, tiêu đề và tên shop
+(từ khoá viết không dấu nên phải dùng cụm đủ nghĩa: "giày/giấy", "sách/sạch", "lẩu/lâu"...). Mã chỉ có tên shop được
+gán theo nhóm chiếm đa số trong các sản phẩm đã thấy của shop đó (bảng `shop_categories`, cập nhật mỗi giờ).
+Sau khi sửa từ khoá: `pnpm worker cli reclassify`. Web: thanh lọc nhóm ở mọi trang, trang `/danh-muc`, API `?nhom=quan-ao`,
+bot `/nhom quan-ao,my-pham` và `/danhmuc`.
+
 ## Giảm thật hay giảm ảo?
 
 Worker lưu lịch sử giá sản phẩm (flash sale, giảm sâu) và tính **giá thường 30 ngày** = trung vị có trọng số theo thời gian
@@ -46,14 +55,14 @@ Trang Giảm sâu / Flash sale có bộ lọc "Chỉ giảm thật" (`?that=1`).
 
 | Endpoint | Mô tả |
 |---|---|
-| `GET /api/v1/promotions?loai=voucher&san=shopee&q=...&sx=moi\|giam\|sap-het&trang=1&limit=50` | Danh sách khuyến mãi |
+| `GET /api/v1/promotions?loai=voucher&san=shopee&nhom=quan-ao&q=...&sx=moi\|giam\|sap-het&trang=1&limit=50` | Danh sách khuyến mãi |
 | `GET /api/v1/export?format=csv\|xlsx` (+ bộ lọc như trên) | Xuất file, tối đa 5000 dòng |
 | `GET /api/v1/best-price?q=...&kind=product\|food&district=cau-giay` | Tạo yêu cầu tìm giá → `{ id }` |
 | `GET /api/v1/best-price?id=<id>` | Trạng thái + kết quả (khớp cao trước, rồi theo giá cuối) |
 
 ## Bot Telegram
 
-`/theodoi <từ khoá>`, `/bo`, `/san shopee,tiki`, `/loai voucher`, `/giam 50`, `/caidat`, `/tatthongbao`, `/batthongbao`,
+`/theodoi <từ khoá>`, `/bo`, `/san shopee,tiki`, `/loai voucher`, `/nhom tra-sua,quan-ao`, `/danhmuc`, `/giam 50`, `/caidat`, `/tatthongbao`, `/batthongbao`,
 `/timgia <tên hoặc link>`, `/timmon <món> [quận]`. Khuyến mãi mới khớp bộ lọc do worker gửi; kết quả `/timgia` cũng do worker gửi khi tìm xong.
 
 ## Trạng thái từng nguồn

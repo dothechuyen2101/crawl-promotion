@@ -1,6 +1,7 @@
 import { Cron } from 'croner';
 import { env, hasDatabase } from './config.ts';
 import { BrowserPool } from './core/browser.ts';
+import { reclassifyAll, refreshShopCategories } from './core/categories.ts';
 import { createContext } from './core/context.ts';
 import { db } from './core/db.ts';
 import { queueStats } from './core/limiter.ts';
@@ -47,6 +48,18 @@ async function main() {
       }),
     );
   }
+  // Bảo trì mỗi giờ: suy ra nhóm của shop từ sản phẩm đã thấy, rồi phân loại lại những gì thay đổi.
+  jobs.push(
+    new Cron('50 * * * *', { name: 'maintenance.categories', timezone: 'Asia/Ho_Chi_Minh', protect: true }, async () => {
+      try {
+        const shops = await refreshShopCategories();
+        const changed = await reclassifyAll();
+        logger.info({ shops, ...changed }, 'categories refreshed');
+      } catch (err) {
+        logger.warn({ err }, 'categories maintenance failed');
+      }
+    }),
+  );
   logger.info({ jobs: jobs.map((j) => `${j.name} → ${j.nextRun()?.toISOString()}`) }, 'scheduler started');
 
   // Lần khởi động: chạy mỗi nguồn 1 lần (cách nhau vài giây) để có dữ liệu ngay.
