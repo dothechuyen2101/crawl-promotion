@@ -20,17 +20,29 @@ describe('parseDiscountText', () => {
 describe('accesstrade', () => {
   const base = {
     id: '123', name: 'Mã Shopee giảm 15% tối đa 30K đơn từ 99K', content: 'Áp dụng toàn sàn',
-    link: 'https://shopee.vn/m/ma-giam-gia', aff_link: 'https://go.isclix.com/deep_link/1?url=x',
+    link: 'https://shopee.vn/m/ma-giam-gia', aff_link: 'https://go.isclix.com/deep_link/7108777448622344019?url=x',
     image: 'https://static.accesstrade.vn/a.png', merchant: 'shopee', domain: 'shopee.vn',
     start_time: '2026-11-01', end_time: '2026-11-30', categories: [],
   };
 
-  it('offer có mã → voucher kèm link affiliate', () => {
-    const [p] = offerToPromotions({ ...base, coupons: [{ coupon_code: 'SPXX15', coupon_desc: 'Giảm 15% tối đa 30K đơn từ 99K' }] }, 'shopee');
+  it('offer có mã → voucher; chiến dịch đã duyệt thì kèm link affiliate', () => {
+    const offer = { ...base, coupons: [{ coupon_code: 'SPXX15', coupon_desc: 'Giảm 15% tối đa 30K đơn từ 99K' }] };
+    const [p] = offerToPromotions(offer, 'shopee', new Set(['shopee']));
     const v = NormalizedPromotionSchema.parse(p);
     expect(v).toMatchObject({ type: 'voucher', scope: 'platform', code: 'SPXX15', discountType: 'percent', discountValue: 15, maxDiscount: 30_000, minSpend: 99_000 });
     expect(v.affiliateUrl).toContain('isclix');
     expect(v.endAt).toEqual(endOfDayVN('2026-11-30'));
+  });
+
+  it('chiến dịch chưa duyệt → bỏ link affiliate (isclix trả 404), đi thẳng link gốc của sàn', () => {
+    const [p] = offerToPromotions({ ...base, coupons: ['SPXX15'] }, 'shopee', new Set(['tiktok_cps']));
+    expect(p!.affiliateUrl).toBeNull();
+    expect(p!.url).toBe('https://shopee.vn/m/ma-giam-gia');
+  });
+
+  it('so merchant không phân biệt hoa thường', () => {
+    const [p] = offerToPromotions({ ...base, merchant: 'Shopee', coupons: ['SPXX15'] }, 'shopee', new Set(['shopee']));
+    expect(p!.affiliateUrl).toContain('isclix');
   });
 
   it('offer không có mã → chiến dịch', () => {

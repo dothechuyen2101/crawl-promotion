@@ -1,5 +1,6 @@
 import type { NormalizedPromotionInput, Platform } from '@cp/shared';
 import { env } from '../../config.ts';
+import { check, db } from '../../core/db.ts';
 import { HttpError, httpJson } from '../../core/http.ts';
 import { sleep } from '../../core/limiter.ts';
 import type { CrawlContext, Source } from '../../core/types.ts';
@@ -11,6 +12,7 @@ import { endOfDayVN, parseDiscountText, startOfDayVN, str } from '../common.ts';
  * Cần ACCESSTRADE_TOKEN (pub.accesstrade.vn → thông tin cá nhân → access key).
  */
 const API = 'https://api.accesstrade.vn/v1/offers_informations';
+const CAMPAIGNS_API = 'https://api.accesstrade.vn/v1/campaigns';
 
 /** Lọc theo domain; TikTok Shop không có domain riêng nên lọc theo merchant của chiến dịch "TIKTOK SHOP CPS". */
 const TARGETS: { platform: Platform; query: Record<string, string> }[] = [
@@ -26,17 +28,17 @@ const MAX_ATTEMPTS = 6;
  * API AccessTrade thỉnh thoảng trả 403 "Invalid token" với key hợp lệ (thường khi gọi dồn dập);
  * gọi lại sau vài giây là được. Chỉ thử lại với lỗi này, 429 và 5xx.
  */
-async function fetchOffers(ctx: CrawlContext, platform: Platform, query: Record<string, string>, page: number) {
+async function atGet<T>(ctx: CrawlContext, url: string, platform: Platform, query: Record<string, string | number>): Promise<T> {
   for (let attempt = 1; ; attempt++) {
     try {
-      return await httpJson<{ data?: AtOffer[] }>(API, {
+      return await httpJson<T>(url, {
         platform,
         priority: ctx.priority,
         signal: ctx.signal,
         retries: 0,
         timeoutMs: 45_000,
         headers: { authorization: `Token ${env.ACCESSTRADE_TOKEN}` },
-        query: { ...query, limit: PAGE_SIZE, page },
+        query,
       });
     } catch (err) {
       if (ctx.signal.aborted) throw err;
@@ -48,6 +50,42 @@ async function fetchOffers(ctx: CrawlContext, platform: Platform, query: Record<
       await sleep(attempt * 3000, ctx.signal);
     }
   }
+}
+
+const fetchOffers = (ctx: CrawlContext, platform: Platform, query: Record<string, string>, page: number) =>
+  atGet<{ data?: AtOffer[] }>(ctx, API, platform, { ...query, limit: PAGE_SIZE, page });
+
+const merchantKey = (m: string | null | undefined) => (m ?? '').trim().toLowerCase();
+
+/**
+ * Merchant (shopee, tikivn, lazada_kol, tiktok_cps…) của các chiến dịch publisher đã được duyệt.
+ * Link affiliate của chiến dịch chưa duyệt (approval = unregistered/pending) không chuyển hướng được
+ * (isclix trả 404/500), nên chỉ offer có merchant trong tập này mới được gắn link affiliate.
+ * So theo merchant vì số trong aff_link (go.isclix.com/deep_link/<số>) không phải mã chiến dịch.
+ * Lỗi API → dùng kết quả lần trước (mặc định rỗng = không gắn link affiliate, đi thẳng link gốc của sàn).
+ */
+let lastApproved = new Set<string>();
+/** Đã đọc được danh sách chiến dịch ít nhất 1 lần (chưa đọc được thì không dọn link). */
+let approvedKnown = false;
+async function approvedMerchants(ctx: CrawlContext): Promise<Set<string>> {
+  try {
+    const merchants = new Set<string>();
+    for (let page = 1; page <= 20; page++) {
+      const res = await atGet<{ data?: { merchant?: string; approval?: string }[]; total_page?: number }>(ctx, CAMPAIGNS_API, 'shopee', {
+        limit: PAGE_SIZE,
+        page,
+      });
+      for (const c of res.data ?? []) if (c.merchant && c.approval === 'successful') merchants.add(merchantKey(c.merchant));
+      if ((res.data ?? []).length < PAGE_SIZE || page >= (res.total_page ?? 1)) break;
+      await sleep(1000, ctx.signal);
+    }
+    lastApproved = merchants;
+    approvedKnown = true;
+  } catch (err) {
+    if (ctx.signal.aborted) throw err;
+    ctx.log.warn({ err: String(err).slice(0, 200) }, 'accesstrade campaigns failed, dùng danh sách cũ');
+  }
+  return lastApproved;
 }
 
 /** "[HPS - Phụ kiện công nghệ]-Giảm 20,000 VNĐ…" → { shop: "HPS", category: "Phụ kiện công nghệ", rest: "Giảm 20,000 VNĐ…" } */
@@ -90,8 +128,10 @@ function couponCodes(raw: unknown[] | undefined): { code: string; desc: string |
 const catName = (c: unknown) =>
   typeof c === 'string' ? c : c && typeof c === 'object' ? (str((c as Record<string, unknown>).category_name_show) ?? str((c as Record<string, unknown>).category_name)) : null;
 
-export function offerToPromotions(o: AtOffer, platform: Platform): NormalizedPromotionInput[] {
-  const url = o.link || o.aff_link;
+/** approved: merchant của các chiến dịch đã duyệt — chỉ khi đó mới giữ aff_link (xem approvedMerchants). */
+export function offerToPromotions(o: AtOffer, platform: Platform, approved: ReadonlySet<string> = new Set()): NormalizedPromotionInput[] {
+  const affiliateUrl = o.aff_link && approved.has(merchantKey(o.merchant)) ? o.aff_link : null;
+  const url = o.link || affiliateUrl;
   if (!o.id || !o.name || !url) return [];
   const { shop, category: shopCategory } = splitOfferName(o.name);
   const base = {
@@ -100,7 +140,7 @@ export function offerToPromotions(o: AtOffer, platform: Platform): NormalizedPro
     shopName: shop,
     description: o.content?.trim() || null,
     url,
-    affiliateUrl: o.aff_link || null,
+    affiliateUrl,
     imageUrl: o.image || null,
     startAt: startOfDayVN(o.start_time),
     endAt: endOfDayVN(o.end_time),
@@ -144,11 +184,13 @@ const accesstrade: Source = {
   disabledReason: () => (env.ACCESSTRADE_TOKEN ? null : 'chưa có ACCESSTRADE_TOKEN'),
   async *run(ctx) {
     const failures: string[] = [];
+    const approved = await approvedMerchants(ctx);
+    ctx.log.info({ approved: [...approved] }, 'accesstrade approved campaigns');
     for (const { platform, query } of TARGETS) {
       try {
         for (let page = 1; page <= 20; page++) {
           const items = (await fetchOffers(ctx, platform, query, page)).data ?? [];
-          for (const o of items) yield* offerToPromotions(o, platform);
+          for (const o of items) yield* offerToPromotions(o, platform, approved);
           if (items.length < PAGE_SIZE) break;
           await sleep(1500, ctx.signal);
         }
@@ -159,6 +201,34 @@ const accesstrade: Source = {
       }
     }
     if (failures.length === TARGETS.length) throw new Error(`AccessTrade lỗi toàn bộ: ${failures.join('; ')}`);
+  },
+  /**
+   * Mã không còn trong API (AccessTrade xoay vòng danh sách) nhưng chưa hết hạn vẫn giữ link affiliate cũ →
+   * bỏ link của các chiến dịch chưa duyệt để nút "Dùng mã" đi thẳng link gốc của sàn.
+   */
+  async afterRun(ctx) {
+    if (!approvedKnown) return;
+    const stale: string[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await db()
+        .from('promotions')
+        .select('id, conditions')
+        .eq('source', accesstrade.id)
+        .not('affiliate_url', 'is', null)
+        .neq('status', 'expired')
+        .order('id')
+        .range(from, from + 999);
+      if (error) throw new Error(`select promotions: ${error.message}`);
+      for (const p of data ?? []) {
+        const merchant = (p.conditions as { merchant?: string } | null)?.merchant;
+        if (!lastApproved.has(merchantKey(merchant))) stale.push(p.id);
+      }
+      if ((data ?? []).length < 1000) break;
+    }
+    for (let i = 0; i < stale.length; i += 300) {
+      check(await db().from('promotions').update({ affiliate_url: null }).in('id', stale.slice(i, i + 300)), 'clear affiliate_url');
+    }
+    if (stale.length) ctx.log.info({ cleared: stale.length }, 'accesstrade: bỏ link affiliate của chiến dịch chưa duyệt');
   },
 };
 

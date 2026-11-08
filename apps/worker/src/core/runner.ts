@@ -92,6 +92,9 @@ export async function runSource(source: Source, ctx: CrawlContext, opts: RunOpti
     if (summary.found === 0 && !source.allowEmpty) {
       throw new Error(`Không lấy được bản ghi nào (${summary.invalid} bản ghi không hợp lệ) — có thể sàn đã đổi API hoặc chặn`);
     }
+    if (persist && source.afterRun) {
+      await source.afterRun(ctx).catch((err) => log.warn({ err: err instanceof Error ? err.message : err }, 'afterRun failed'));
+    }
   } catch (err) {
     summary.status = 'error';
     summary.error = err instanceof Error ? err.message : String(err);

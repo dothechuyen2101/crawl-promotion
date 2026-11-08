@@ -30,6 +30,8 @@ export interface Source {
   /** Bỏ qua khi thiếu cấu hình (vd chưa có ACCESSTRADE_TOKEN). Trả lý do nếu bị tắt. */
   disabledReason?: () => string | null;
   run(ctx: CrawlContext): AsyncIterable<NormalizedPromotionInput>;
+  /** Dọn dẹp sau một lượt chạy thành công có ghi DB (không gọi khi --dry-run). */
+  afterRun?(ctx: CrawlContext): Promise<void>;
 }
 
 export interface SearchOptions {
