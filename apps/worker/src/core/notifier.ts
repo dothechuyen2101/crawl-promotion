@@ -24,6 +24,8 @@ interface PromoRow {
   url: string;
   affiliate_url: string | null;
   search_text: string;
+  deal_quality: string | null;
+  is_lowest_30d: boolean;
 }
 
 interface SubRow {
@@ -37,6 +39,8 @@ interface SubRow {
 const vnd = (n: number | null) => (n == null ? '' : `${Number(n).toLocaleString('vi-VN')}đ`);
 
 export function matches(sub: SubRow, p: PromoRow): boolean {
+  // Không báo deal có dấu hiệu nâng giá gốc để "giảm ảo".
+  if (p.deal_quality === 'inflated') return false;
   if (sub.platforms.length && !sub.platforms.includes(p.platform)) return false;
   if (sub.types.length && !sub.types.includes(p.type)) return false;
   const pct = p.discount_pct ?? (p.discount_type === 'percent' ? Number(p.discount_value) : null);
@@ -50,6 +54,7 @@ export function formatPromo(p: PromoRow): string {
   const lines = [`<b>${PLATFORM_LABELS[p.platform]}</b> · ${PROMO_TYPE_LABELS[p.type]}`, escapeHtml(p.title)];
   if (p.sale_price != null) {
     lines.push(`💰 ${vnd(p.sale_price)}${p.original_price ? ` <s>${vnd(p.original_price)}</s>` : ''}${p.discount_pct ? ` (-${p.discount_pct}%)` : ''}`);
+    if (p.deal_quality === 'real') lines.push(p.is_lowest_30d ? '✅ Giảm thật · thấp nhất 30 ngày' : '✅ Giảm thật so với giá 30 ngày qua');
   }
   if (p.code) {
     const what =
@@ -74,7 +79,7 @@ export async function notifyNewPromotions(): Promise<number> {
   const promos = must(
     await db()
       .from('promotions')
-      .select('id, platform, type, title, code, discount_type, discount_value, max_discount, min_spend, sale_price, original_price, discount_pct, end_at, url, affiliate_url, search_text')
+      .select('id, platform, type, title, code, discount_type, discount_value, max_discount, min_spend, sale_price, original_price, discount_pct, end_at, url, affiliate_url, search_text, deal_quality, is_lowest_30d')
       .is('notified_at', null)
       .eq('status', 'active')
       .gte('first_seen_at', since)

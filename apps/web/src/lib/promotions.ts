@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@cp/shared/database';
 
 export const PROMO_COLUMNS =
-  'id, platform, type, title, description, code, discount_type, discount_value, max_discount, min_spend, is_cashback, sale_price, original_price, discount_pct, start_at, end_at, url, affiliate_url, image_url, shop_name, category, scope, payment_method, new_user_only, requires_collect, conditions, status, first_seen_at' as const;
+  'id, platform, type, title, description, code, discount_type, discount_value, max_discount, min_spend, is_cashback, sale_price, original_price, discount_pct, start_at, end_at, url, affiliate_url, image_url, shop_name, category, scope, payment_method, new_user_only, requires_collect, conditions, status, first_seen_at, deal_quality, is_lowest_30d, price_median_30d, price_min_30d' as const;
 
 export type PromoRow = Database['public']['Tables']['promotions']['Row'];
 export type PromoListItem = Pick<
@@ -12,6 +12,7 @@ export type PromoListItem = Pick<
   | 'min_spend' | 'is_cashback' | 'sale_price' | 'original_price' | 'discount_pct' | 'start_at' | 'end_at' | 'url'
   | 'affiliate_url' | 'image_url' | 'shop_name' | 'category' | 'scope' | 'payment_method' | 'new_user_only'
   | 'requires_collect' | 'conditions' | 'status' | 'first_seen_at'
+  | 'deal_quality' | 'is_lowest_30d' | 'price_median_30d' | 'price_min_30d'
 >;
 
 export const SORTS = { moi: 'Mới nhất', giam: 'Giảm nhiều', 'sap-het': 'Sắp hết hạn' } as const;
@@ -22,6 +23,8 @@ export interface PromoFilter {
   platform?: Platform;
   q?: string;
   sort?: Sort;
+  /** Chỉ deal giảm thật so với giá 30 ngày (?that=1). */
+  realOnly?: boolean;
   page?: number;
   pageSize?: number;
 }
@@ -39,6 +42,7 @@ export function parseFilter(sp: Record<string, string | string[] | undefined>, f
     platform: PLATFORMS.includes(san as Platform) ? (san as Platform) : undefined,
     q: first(sp.q)?.trim().slice(0, 100) || undefined,
     sort: sx && sx in SORTS ? (sx as Sort) : 'moi',
+    realOnly: first(sp.that) === '1',
     page: Number.isFinite(page) && page > 0 ? Math.min(page, 500) : 1,
   };
 }
@@ -49,6 +53,7 @@ export async function listPromotions(db: SupabaseClient<Database>, f: PromoFilte
   let q = db.from('promotions').select(PROMO_COLUMNS, { count: 'exact' }).eq('status', 'active');
   if (f.type) q = q.eq('type', f.type);
   if (f.platform) q = q.eq('platform', f.platform);
+  if (f.realOnly) q = q.eq('deal_quality', 'real');
   if (f.q) q = q.ilike('search_text', `%${normalizeText(f.q).replace(/[%_]/g, '')}%`);
   if (f.sort === 'giam') {
     q = q.order('discount_pct', { ascending: false, nullsFirst: false }).order('discount_value', { ascending: false, nullsFirst: false });

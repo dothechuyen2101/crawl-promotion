@@ -33,6 +33,15 @@ Chạy nền bằng Docker: `docker compose up -d --build worker`.
 Web: `pnpm web dev` (http://localhost:3000). Trang chính: `/`, `/voucher`, `/flash-sale`, `/giam-sau`, `/chien-dich`,
 `/tim-gia`, `/admin`. Kiểm thử nhanh trang admin: `node apps/web/scripts/admin-smoke.mjs` (tạo admin tạm rồi xoá).
 
+## Giảm thật hay giảm ảo?
+
+Worker lưu lịch sử giá sản phẩm (flash sale, giảm sâu) và tính **giá thường 30 ngày** = trung vị có trọng số theo thời gian
+mỗi mức giá được giữ (`packages/shared/src/price-insight.ts`). Khi đủ ≥ 3 ngày dữ liệu:
+- giá hiện tại ≤ 90% giá thường → **Giảm thật** (kèm "thấp nhất 30 ngày" nếu rẻ hơn mọi mức giá khác);
+- giá gốc niêm yết ≥ 120% giá thường mà giá bán ≈ giá thường → **Giá gốc có thể bị nâng** (không gửi thông báo Telegram).
+
+Trang Giảm sâu / Flash sale có bộ lọc "Chỉ giảm thật" (`?that=1`).
+
 ## API (header `x-api-key`, tạo key trong /admin)
 
 | Endpoint | Mô tả |

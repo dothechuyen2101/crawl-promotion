@@ -6,7 +6,7 @@ import { PromoCard } from './promo-card';
 
 type SP = Record<string, string | string[] | undefined>;
 
-type Patch = Partial<Record<'san' | 'loai' | 'sx' | 'trang' | 'q', string | undefined>>;
+type Patch = Partial<Record<'san' | 'loai' | 'sx' | 'trang' | 'q' | 'that', string | undefined>>;
 
 /** Tạo link giữ nguyên bộ lọc hiện tại, ghi đè bằng `patch` (giá trị rỗng = bỏ). Đổi bộ lọc thì về trang 1. */
 function href(base: string, f: PromoFilter, fixedType: PromoType | undefined, patch: Patch) {
@@ -16,6 +16,7 @@ function href(base: string, f: PromoFilter, fixedType: PromoType | undefined, pa
     loai: fixedType ? undefined : f.type,
     sx: f.sort === 'moi' ? undefined : f.sort,
     q: f.q,
+    that: f.realOnly ? '1' : undefined,
     trang: undefined,
     ...patch,
   };
@@ -82,6 +83,11 @@ export async function FeedPage({
               {PROMO_TYPE_LABELS[t]}
             </Link>
           ))}
+        {(fixedType === 'deal' || fixedType === 'flash_sale' || f.type === 'deal' || f.type === 'flash_sale') && (
+          <Link href={link({ that: f.realOnly ? '' : '1' })} className={chip(!!f.realOnly)} title="Giá hiện tại thấp hơn giá thường 30 ngày qua ít nhất 10%">
+            ✓ Chỉ giảm thật
+          </Link>
+        )}
         <span className="ml-auto text-muted">Sắp xếp:</span>
         {Object.entries(SORTS).map(([k, label]) => (
           <Link key={k} href={link({ sx: k === 'moi' ? '' : k })} className={chip(f.sort === k)}>

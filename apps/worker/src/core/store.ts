@@ -1,4 +1,4 @@
-import { normalizeText, type NormalizedPromotion, type Platform, type PromoType } from '@cp/shared';
+import { normalizeText, priceInsight, type NormalizedPromotion, type Platform, type PromoType } from '@cp/shared';
 import type { Json } from '@cp/shared/database';
 import { check, db, must } from './db.ts';
 import { contentHash } from './hash.ts';
@@ -175,7 +175,47 @@ export async function upsertProductsFrom(items: NormalizedPromotion[]): Promise<
         check(await db().from('price_history').insert(history), 'insert price_history');
         historyRows += history.length;
       }
+      await refreshDealQuality(platform, upserted, ps);
     }
   }
   return historyRows;
+}
+
+/**
+ * Tính "giảm thật / giá gốc ảo / thấp nhất 30 ngày" cho các sản phẩm vừa cập nhật
+ * từ lịch sử giá, rồi ghi vào các promotion deal/flash_sale tương ứng (1 lệnh RPC).
+ */
+async function refreshDealQuality(
+  platform: Platform,
+  products: { id: string; external_id: string }[],
+  promos: NormalizedPromotion[],
+) {
+  if (!products.length) return;
+  const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
+  const { data: rows, error } = await db()
+    .from('price_history')
+    .select('product_id, price, captured_at')
+    .in('product_id', products.map((p) => p.id))
+    .gte('captured_at', since)
+    .order('captured_at')
+    .limit(20_000);
+  if (error) throw new Error(`select price_history: ${error.message}`);
+  const byProduct = new Map<string, { price: number; at: string }[]>();
+  for (const r of rows ?? []) byProduct.set(r.product_id, [...(byProduct.get(r.product_id) ?? []), { price: Number(r.price), at: r.captured_at }]);
+  const promoByExt = new Map(promos.map((p) => [p.productExternalId!, p]));
+
+  const items = products.flatMap((p) => {
+    const promo = promoByExt.get(p.external_id);
+    if (!promo || promo.salePrice == null) return [];
+    const ins = priceInsight(byProduct.get(p.id) ?? [], promo.salePrice, promo.originalPrice);
+    return [{
+      platform,
+      product_external_id: p.external_id,
+      median: ins.median,
+      min_price: ins.min,
+      is_lowest: ins.isLowest,
+      quality: ins.quality,
+    }];
+  });
+  if (items.length) check(await db().rpc('apply_deal_quality', { items }), 'apply_deal_quality');
 }

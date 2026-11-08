@@ -34,6 +34,7 @@ export function PromoCard({ p }: { p: PromoListItem }) {
           </div>
           <h3 className="line-clamp-2 text-sm font-medium leading-snug">{p.title}</h3>
           {p.shop_name && <p className="mt-0.5 truncate text-xs text-muted">{p.shop_name}</p>}
+          <DealBadge p={p} />
         </div>
       </Link>
 
@@ -67,4 +68,23 @@ export function PromoCard({ p }: { p: PromoListItem }) {
       </div>
     </article>
   );
+}
+
+/** Nhãn đánh giá deal từ lịch sử giá 30 ngày (chỉ hiện khi đã đủ dữ liệu). */
+export function DealBadge({ p }: { p: Pick<PromoListItem, 'deal_quality' | 'is_lowest_30d'> }) {
+  if (p.deal_quality === 'real') {
+    return (
+      <span className="mt-1 inline-block rounded bg-good-soft px-1.5 py-0.5 text-[11px] font-medium text-good">
+        ✓ Giảm thật{p.is_lowest_30d ? ' · thấp nhất 30 ngày' : ''}
+      </span>
+    );
+  }
+  if (p.deal_quality === 'inflated') {
+    return (
+      <span className="mt-1 inline-block rounded bg-warn-soft px-1.5 py-0.5 text-[11px]" title="Giá gốc niêm yết cao hơn nhiều so với giá bán thường ngày">
+        ⚠ Giá gốc có thể bị nâng
+      </span>
+    );
+  }
+  return null;
 }

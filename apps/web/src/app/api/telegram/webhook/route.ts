@@ -90,7 +90,7 @@ async function handle(chatId: number, text: string) {
     case 'start':
     case 'help':
       await saveSub(chatId, {});
-      return reply(chatId, HELP);
+      return reply(chatId, `${HELP}\n\nChat ID của bạn: <code>${chatId}</code>`);
     case 'theodoi': {
       if (!arg) return reply(chatId, 'Ví dụ: /theodoi tai nghe bluetooth');
       const s = await getSub(chatId);
@@ -122,7 +122,7 @@ async function handle(chatId: number, text: string) {
       return reply(chatId, n ? `Chỉ nhận khuyến mãi giảm từ ${n}%.` : 'Đã bỏ giới hạn % giảm.');
     }
     case 'caidat':
-      return reply(chatId, describe(await getSub(chatId)));
+      return reply(chatId, `${describe(await getSub(chatId))}\nChat ID: <code>${chatId}</code>`);
     case 'tatthongbao':
     case 'huy':
       await saveSub(chatId, { active: false });

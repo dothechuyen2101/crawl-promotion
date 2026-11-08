@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { PLATFORM_LABELS, PROMO_TYPE_LABELS } from '@cp/shared';
 import { CopyButton } from '@/components/copy-button';
 import { PlatformBadge } from '@/components/platform-badge';
-import { PromoCard } from '@/components/promo-card';
+import { DealBadge, PromoCard } from '@/components/promo-card';
 import { dateVN, discountLabel, timeLeft, vnd } from '@/lib/format';
 import { PROMO_COLUMNS, type PromoListItem } from '@/lib/promotions';
 import { serverClient } from '@/lib/supabase/server';
@@ -76,6 +76,13 @@ export default async function PromoDetail({ params }: Props) {
             </div>
           )}
           {label && <p className="text-lg font-semibold">{label}</p>}
+          <DealBadge p={p} />
+          {p.price_median_30d != null && (
+            <p className="text-sm text-muted">
+              Giá thường 30 ngày qua: <b className="text-fg">{vnd(p.price_median_30d)}</b>
+              {p.price_min_30d != null && <> · thấp nhất: <b className="text-fg">{vnd(p.price_min_30d)}</b></>}
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             {p.code && (
