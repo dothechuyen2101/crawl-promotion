@@ -1,0 +1,20 @@
+node_modules/
+# mọi biến thể .env (kể cả tên có khoảng trắng thừa), trừ file mẫu
+.env*
+!.env.example
+.next/
+.vercel/
+dist/
+coverage/
+*.log
+.DS_Store
+
+# worker runtime data (browser profiles contain login sessions)
+apps/worker/data/
+supabase/.temp/
+supabase/.branches/
+.vercel
+
+# cài đặt Claude Code riêng từng máy
+.claude/settings.local.json
+*.tsbuildinfo

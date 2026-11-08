@@ -1,0 +1,22 @@
+{
+  "name": "crawl-promotion",
+  "private": true,
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "worker": "pnpm --filter @cp/worker",
+    "web": "pnpm --filter @cp/web",
+    "db:start": "npx supabase start",
+    "db:reset": "npx supabase db reset",
+    "db:types": "npx supabase gen types typescript --local > packages/shared/src/database.types.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,10 @@
+# Không tải khoá bí mật và dữ liệu runtime lên Vercel
+.env*
+**/.env*
+!.env.example
+apps/worker/data
+**/node_modules
+**/.next
+supabase/.temp
+supabase/.branches
+.claude

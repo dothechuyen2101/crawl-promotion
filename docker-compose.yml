@@ -1,0 +1,18 @@
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    # Khoá Supabase/Telegram/AccessTrade ở .env gốc; cấu hình riêng worker ở apps/worker/.env
+    env_file:
+      - .env
+      - apps/worker/.env
+    environment:
+      DATA_DIR: /data
+    volumes:
+      # profile trình duyệt (phiên đăng nhập) + dữ liệu runtime
+      - ./apps/worker/data:/data
+    # Dùng mạng của máy để gọi được Supabase local (127.0.0.1:55321) khi phát triển
+    network_mode: host
+    restart: unless-stopped
+    shm_size: 1gb

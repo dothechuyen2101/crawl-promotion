@@ -1,0 +1,10 @@
+**/node_modules
+**/.next
+**/.env*
+!.env.example
+apps/worker/data
+.git
+.vercel
+.claude
+supabase/.temp
+supabase/.branches
