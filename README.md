@@ -62,7 +62,7 @@ Trang Giảm sâu / Flash sale có bộ lọc "Chỉ giảm thật" (`?that=1`).
 | `GET /api/v1/promotions?loai=voucher&san=shopee&nhom=quan-ao&q=...&sx=moi\|giam\|sap-het&trang=1&limit=50` | Danh sách khuyến mãi |
 | `GET /api/v1/export?format=csv\|xlsx` (+ bộ lọc như trên) | Xuất file, tối đa 5000 dòng |
 | `GET /api/v1/best-price?q=...&kind=product\|food&district=cau-giay` | Tạo yêu cầu tìm giá → `{ id }` |
-| `GET /api/v1/best-price?id=<id>` | Trạng thái + kết quả (khớp cao trước, rồi theo giá cuối) |
+| `GET /api/v1/best-price?id=<id>` | Trạng thái + kết quả (khớp cao trước, rồi theo giá cuối) + `vouchers`: mã giảm giá cùng nhóm sản phẩm với câu tìm (vd "trà sữa" → nhóm `tra-sua`) |
 
 ## Bot Telegram
 

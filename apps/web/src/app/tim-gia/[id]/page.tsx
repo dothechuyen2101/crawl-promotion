@@ -2,8 +2,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { SearchForm } from '@/components/search-form';
+import { RelatedVouchersSection } from '@/components/related-vouchers';
 import { SearchResults, type SearchRequestInfo } from '@/components/search-results';
 import { fallbackResults } from '@/lib/fallback';
+import { relatedVouchers } from '@/lib/promotions';
 import { RESULT_COLUMNS, toResultRow, type ResultRow } from '@/lib/results';
 import { workerOnline } from '@/lib/search';
 import { serverClient } from '@/lib/supabase/server';
@@ -32,9 +34,10 @@ export default async function SearchResultPage({ params }: Props) {
   const req = await load(id);
   if (!req) notFound();
   const db = await serverClient();
-  const [{ data: results }, online] = await Promise.all([
+  const [{ data: results }, online, related] = await Promise.all([
     db.from('search_results').select(RESULT_COLUMNS).eq('request_id', id),
     workerOnline().catch(() => false),
+    relatedVouchers(db, req.query),
   ]);
   let rows: ResultRow[] = (results ?? []).map((r) => toResultRow(r as Record<string, unknown>));
   let fallback = false;
@@ -67,7 +70,10 @@ export default async function SearchResultPage({ params }: Props) {
           </p>
         )}
       </div>
+      {/* Tìm tên mặt hàng chung ("trà sữa") → mã giảm giá của nhóm lên trước; tìm sản phẩm cụ thể → để sau kết quả. */}
+      {related.generic && <RelatedVouchersSection data={related} query={req.query} />}
       <SearchResults request={info} initialResults={rows} online={online} fallback={fallback} />
+      {!related.generic && <RelatedVouchersSection data={related} query={req.query} />}
       <div className="border-t border-line pt-5">
         <SearchForm compact />
       </div>

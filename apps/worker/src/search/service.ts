@@ -1,4 +1,4 @@
-import { HANOI_DISTRICTS, type HanoiDistrict, type Platform } from '@cp/shared';
+import { CATEGORIES, classifyQuery, HANOI_DISTRICTS, type CategorySlug, type HanoiDistrict, type Platform } from '@cp/shared';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { Json } from '@cp/shared/database';
 import { check, db } from '../core/db.ts';
@@ -10,14 +10,39 @@ import { HIGH_MATCH, runSearch, type RankedResult } from './pipeline.ts';
 
 const POLL_MS = 3000;
 
+/** Nhóm sản phẩm của câu tìm (vd "trà sữa" → tra-sua) và số mã giảm giá đang hiệu lực của nhóm đó. */
+async function relatedCategory(query: string): Promise<{ slug: CategorySlug; total: number } | undefined> {
+  const { slug } = classifyQuery(query);
+  if (slug === 'khac' || slug === 'toan-san' || slug === 'thanh-toan') return undefined;
+  const { count } = await db()
+    .from('promotions')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'active')
+    .eq('type', 'voucher')
+    .eq('category_slug', slug);
+  return { slug, total: count ?? 0 };
+}
+
 const vnd = (n: number) => `${Math.round(n).toLocaleString('vi-VN')}đ`;
 
 /** Tin nhắn trả kết quả tìm giá cho người dùng bot Telegram (top 5 khớp cao). */
-export function formatSearchReply(req: { id: string; query: string }, ranked: RankedResult[]): string {
+export function formatSearchReply(
+  req: { id: string; query: string },
+  ranked: RankedResult[],
+  related?: { slug: CategorySlug; total: number },
+): string {
   const top = ranked.filter((r) => r.matchScore >= HIGH_MATCH && !r.isOutlier).slice(0, 5);
-  const link = env.PUBLIC_SITE_URL ? `${env.PUBLIC_SITE_URL.replace(/\/$/, '')}/tim-gia/${req.id}` : null;
+  const site = env.PUBLIC_SITE_URL?.replace(/\/$/, '');
+  const link = site ? `${site}/tim-gia/${req.id}` : null;
+  const relatedLine =
+    related && related.total > 0
+      ? `🎟️ ${related.total} mã giảm giá nhóm ${CATEGORIES[related.slug].emoji} ${CATEGORIES[related.slug].name}` +
+        (site ? `: <a href="${site}/voucher?nhom=${related.slug}">xem tất cả</a>` : '')
+      : null;
   if (!top.length) {
-    return `Không tìm thấy kết quả khớp cho "<b>${escapeHtml(req.query)}</b>".${link ? `\n<a href="${link}">Xem tất cả kết quả</a>` : ''}`;
+    return [`Không tìm thấy sản phẩm khớp cho "<b>${escapeHtml(req.query)}</b>".`, relatedLine, link ? `<a href="${link}">Xem tất cả kết quả</a>` : null]
+      .filter(Boolean)
+      .join('\n');
   }
   const lines = [`🔎 Giá tốt nhất cho "<b>${escapeHtml(req.query)}</b>":`, ''];
   top.forEach((r, i) => {
@@ -28,6 +53,7 @@ export function formatSearchReply(req: { id: string; query: string }, ranked: Ra
       `   <a href="${escapeHtml(r.listing.url)}">Mở sản phẩm</a>`,
     );
   });
+  if (relatedLine) lines.push('', relatedLine);
   lines.push('', '<i>Giá ước tính; voucher có thể hết lượt hoặc có điều kiện riêng.</i>');
   if (link) lines.push(`<a href="${link}">Xem đầy đủ & tuỳ chọn ví/ngân hàng</a>`);
   return lines.join('\n');
@@ -159,7 +185,7 @@ export class SearchService {
         })
         .eq('id', req.id);
       log.info({ ms: Date.now() - started, platforms: done.length, errors: errors.length }, 'search finished');
-      if (req.notify_chat_id) await sendTelegram(req.notify_chat_id, formatSearchReply(req, ranked));
+      if (req.notify_chat_id) await sendTelegram(req.notify_chat_id, formatSearchReply(req, ranked, await relatedCategory(req.query)));
     } catch (err) {
       log.error({ err }, 'search failed');
       await db()

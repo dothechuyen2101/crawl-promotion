@@ -1,4 +1,4 @@
-import { isCategorySlug, normalizeText, PLATFORMS, PROMO_TYPES, type CategorySlug, type Platform, type PromoType } from '@cp/shared';
+import { classifyQuery, isCategorySlug, normalizeText, PLATFORMS, PROMO_TYPES, type CategorySlug, type Platform, type PromoType } from '@cp/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@cp/shared/database';
 
@@ -77,4 +77,37 @@ export async function categoryCounts(db: SupabaseClient<Database>, f: Pick<Promo
   const map = new Map<string, number>();
   for (const r of data ?? []) map.set(r.slug, Number(r.n));
   return map;
+}
+
+export interface RelatedVouchers {
+  /** Nhóm suy ra từ câu tìm (vd "trà sữa" → tra-sua); undefined nếu không đoán được. */
+  category?: CategorySlug;
+  /** Câu tìm chỉ là tên nhóm/mặt hàng chung chung (vd "trà sữa") chứ không phải một sản phẩm cụ thể. */
+  generic: boolean;
+  items: PromoListItem[];
+  /** Tổng số mã của nhóm (để hiện "xem tất cả"). */
+  categoryTotal: number;
+  /** Số mã toàn sàn đang hiệu lực (dùng được cho mọi đơn). */
+  platformWide: number;
+}
+
+/**
+ * Mã giảm giá liên quan tới câu tìm giá: mã có chữ khớp câu tìm (vd tên shop "Gong Cha") trước,
+ * rồi tới mã cùng nhóm sản phẩm (vd "trà sữa" → mọi mã nhóm Trà sữa & đồ uống). Giảm nhiều xếp trước.
+ */
+export async function relatedVouchers(db: SupabaseClient<Database>, query: string, limit = 12): Promise<RelatedVouchers> {
+  const text = query.trim().slice(0, 100);
+  const { slug } = classifyQuery(text);
+  const category = slug === 'khac' || slug === 'toan-san' || slug === 'thanh-toan' ? undefined : slug;
+  const words = normalizeText(text).split(' ').filter(Boolean);
+  const generic = Boolean(category) && words.length <= 3 && !/\d/.test(text);
+
+  const [byText, byCat, wide] = await Promise.all([
+    text.length >= 2 ? listPromotions(db, { type: 'voucher', q: text, sort: 'giam', pageSize: limit }) : null,
+    category ? listPromotions(db, { type: 'voucher', category, sort: 'giam', pageSize: limit }) : null,
+    listPromotions(db, { type: 'voucher', category: 'toan-san', pageSize: 1 }),
+  ]);
+  const seen = new Set<string>();
+  const items = [...(byText?.items ?? []), ...(byCat?.items ?? [])].filter((p) => !seen.has(p.id) && seen.add(p.id)).slice(0, limit);
+  return { category, generic, items, categoryTotal: byCat?.total ?? 0, platformWide: wide.total };
 }

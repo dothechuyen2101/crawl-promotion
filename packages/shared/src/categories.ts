@@ -281,5 +281,41 @@ export function classifyCategory(input: ClassifyInput): ClassifyResult {
   return { slug: sitewide ? 'toan-san' : 'khac', score: best.score };
 }
 
+/**
+ * Từ đơn CÓ DẤU người dùng hay gõ khi tìm, mà bỏ dấu thì mơ hồ nên bộ từ khoá không dùng được
+ * (giày/giấy, bia/bìa, tã/ta, áo/ao…). Chỉ áp cho câu tìm, không áp cho tiêu đề khuyến mãi.
+ */
+const QUERY_ALIASES: Record<string, CategorySlug> = {
+  'giày': 'giay-tui', 'giầy': 'giay-tui', 'dép': 'giay-tui', 'túi': 'giay-tui', 'ví': 'giay-tui', 'cặp': 'giay-tui',
+  'áo': 'quan-ao', 'quần': 'quan-ao', 'váy': 'quan-ao', 'đầm': 'quan-ao', 'đồ lót': 'quan-ao',
+  'mũ': 'phu-kien-thoi-trang', 'nón': 'phu-kien-thoi-trang', 'kính': 'phu-kien-thoi-trang', 'nhẫn': 'phu-kien-thoi-trang',
+  'tã': 'me-be', 'bỉm': 'me-be',
+  'bia': 'bach-hoa', 'rượu': 'bach-hoa', 'bánh': 'bach-hoa', 'kẹo': 'bach-hoa', 'sữa': 'bach-hoa', 'mì': 'bach-hoa',
+  'trà': 'tra-sua', 'cafe': 'tra-sua', 'nước ép': 'tra-sua',
+  'cơm': 'do-an', 'bún': 'do-an', 'phở': 'do-an', 'lẩu': 'do-an', 'gà': 'do-an', 'bánh mì': 'do-an', 'đồ ăn': 'do-an',
+  'son': 'my-pham', 'kem': 'my-pham',
+  'sạc': 'phu-kien-dien-thoai', 'cáp': 'phu-kien-dien-thoai', 'ốp': 'phu-kien-dien-thoai',
+  'chuột': 'may-tinh', 'bàn phím': 'may-tinh', 'màn hình': 'may-tinh',
+  'quạt': 'dien-gia-dung', 'nồi': 'dien-gia-dung',
+  'thuốc': 'suc-khoe',
+  'chăn': 'nha-cua', 'gối': 'nha-cua', 'nệm': 'nha-cua', 'giấy': 'nha-cua', 'bát': 'nha-cua', 'cốc': 'nha-cua',
+  'truyện': 'sach-van-phong', 'bút': 'sach-van-phong', 'vở': 'sach-van-phong',
+  'xe đạp': 'the-thao', 'vợt': 'the-thao', 'lều': 'the-thao',
+  'xe máy': 'xe-co', 'ô tô': 'xe-co',
+  'chó': 'thu-cung', 'mèo': 'thu-cung',
+  'vé máy bay': 'dich-vu', 'khách sạn': 'dich-vu',
+};
+
+/**
+ * Nhóm sản phẩm của một câu tìm kiếm (vd "trà sữa" → tra-sua, "giày" → giay-tui).
+ * Trả 'khac' nếu không đoán được — người gọi tự quyết bỏ qua.
+ */
+export function classifyQuery(query: string): ClassifyResult {
+  const q = query.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
+  const alias = QUERY_ALIASES[q];
+  if (alias) return { slug: alias, score: 99 };
+  return classifyCategory({ title: q });
+}
+
 export const categoryLabel = (slug: string | null | undefined) =>
   isCategorySlug(slug) ? `${CATEGORIES[slug].emoji} ${CATEGORIES[slug].name}` : '';

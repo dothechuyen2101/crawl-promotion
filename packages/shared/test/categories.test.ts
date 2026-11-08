@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyCategory, type ClassifyInput } from '../src/index.ts';
+import { classifyCategory, classifyQuery, type ClassifyInput } from '../src/index.ts';
 
 const c = (i: ClassifyInput | string) => classifyCategory(typeof i === 'string' ? { title: i } : i).slug;
 
@@ -79,6 +79,30 @@ describe('classifyCategory — dữ liệu thật', () => {
 
   it('GrabFood chỉ xếp vào nhóm ăn uống', () => {
     expect(c({ title: 'Trà sữa Tocotoco - Cầu Giấy', platform: 'grabfood' })).toBe('tra-sua');
+  });
+});
+
+describe('classifyQuery — câu tìm giá', () => {
+  it.each([
+    ['trà sữa', 'tra-sua'],
+    ['Trà Sữa', 'tra-sua'],
+    ['cà phê', 'tra-sua'],
+    ['gà rán', 'do-an'],
+    ['son môi', 'my-pham'],
+    ['ốp lưng iphone 15', 'phu-kien-dien-thoai'],
+    ['tai nghe sony wh-1000xm5', 'am-thanh'],
+    // từ đơn mơ hồ khi bỏ dấu → tra bảng có dấu
+    ['giày', 'giay-tui'],
+    ['giấy', 'nha-cua'],
+    ['tã', 'me-be'],
+    ['bia', 'bach-hoa'],
+    ['áo', 'quan-ao'],
+  ])('%s → %s', (q, slug) => {
+    expect(classifyQuery(q).slug).toBe(slug);
+  });
+
+  it('không đoán được → khac', () => {
+    expect(classifyQuery('abc xyz').slug).toBe('khac');
   });
 });
 

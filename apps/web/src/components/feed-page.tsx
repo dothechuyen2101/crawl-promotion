@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { CATEGORIES, CATEGORY_SLUGS, PLATFORM_LABELS, PLATFORMS, PROMO_TYPE_LABELS, PROMO_TYPES, type PromoType } from '@cp/shared';
 import { categoryCounts, listPromotions, parseFilter, SORTS, type PromoFilter } from '@/lib/promotions';
 import { serverClient } from '@/lib/supabase/server';
+import { CollapsibleChips } from './collapsible-chips';
 import { PromoCard } from './promo-card';
 
 type SP = Record<string, string | string[] | undefined>;
@@ -72,28 +73,28 @@ export async function FeedPage({
         </form>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-        <Link href={link({ san: '' })} className={chip(!f.platform)}>
+      <div className="flex flex-wrap gap-2">
+        <Link href={link({ san: '' })} className={chip(!f.platform)} aria-current={!f.platform ? 'true' : undefined}>
           Mọi sàn
         </Link>
         {PLATFORMS.map((p) => (
-          <Link key={p} href={link({ san: p })} className={chip(f.platform === p)}>
+          <Link key={p} href={link({ san: p })} className={chip(f.platform === p)} aria-current={f.platform === p ? 'true' : undefined}>
             {PLATFORM_LABELS[p]}
           </Link>
         ))}
       </div>
 
       {cats.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-          <Link href={link({ nhom: '' })} className={chip(!f.category)}>
+        <CollapsibleChips moreLabel={`Xem tất cả ${cats.length} nhóm`}>
+          <Link href={link({ nhom: '' })} className={chip(!f.category)} aria-current={!f.category ? 'true' : undefined}>
             Mọi nhóm
           </Link>
           {cats.map((c) => (
-            <Link key={c} href={link({ nhom: c })} className={chip(f.category === c)}>
+            <Link key={c} href={link({ nhom: c })} className={chip(f.category === c)} aria-current={f.category === c ? 'true' : undefined}>
               {CATEGORIES[c].emoji} {CATEGORIES[c].name} <span className="opacity-60">{counts.get(c) ?? 0}</span>
             </Link>
           ))}
-        </div>
+        </CollapsibleChips>
       )}
 
       <div className="flex flex-wrap items-center gap-2 text-xs">
