@@ -1,12 +1,12 @@
 import { parseArgs } from 'node:util';
-import { HANOI_DISTRICTS, PLATFORMS, type HanoiDistrict, type Platform, type SearchKind } from '@cp/shared';
+import { CATEGORIES, HANOI_DISTRICTS, PLATFORMS, type HanoiDistrict, type Platform, type SearchKind } from '@cp/shared';
 import { chromium } from 'playwright';
 import { randomBytes } from 'node:crypto';
 import { fetch } from 'undici';
-import { env } from './config.ts';
+import { env, hasAI } from './config.ts';
 import { db } from './core/db.ts';
 import { BrowserPool } from './core/browser.ts';
-import { reclassifyAll, refreshShopCategories } from './core/categories.ts';
+import { aiClassifyShops, reclassifyAll, refreshShopCategories } from './core/categories.ts';
 import { createContext } from './core/context.ts';
 import { runSource } from './core/runner.ts';
 import { logger } from './logger.ts';
@@ -24,6 +24,8 @@ const HELP = `Cách dùng: pnpm worker cli <lệnh> [tuỳ chọn]
                                          (dùng tài khoản phụ). Đóng cửa sổ khi xong.
   recon <url> [--match <chuỗi>]          Mở trang và in các request JSON (để tìm API khi sàn đổi giao diện)
   reclassify                             Suy ra nhóm của shop rồi phân loại lại toàn bộ khuyến mãi & sản phẩm
+  ai-classify [--limit N] [--dry-run]    Nhờ AI (Claude qua APIMart) đoán nhóm các shop có mã đang ở "Khác",
+                                         rồi phân loại lại (--dry-run: chỉ in, không ghi DB)
   make-admin <email>                     Tạo (nếu chưa có) tài khoản và cấp quyền quản trị cho /admin
   telegram-webhook <url-web>             Đăng ký webhook bot Telegram (vd https://ten-app.vercel.app)
 `;
@@ -160,6 +162,24 @@ async function main() {
         const shops = await refreshShopCategories();
         const changed = await reclassifyAll();
         console.log(`Shop đã suy ra nhóm: ${shops} · khuyến mãi đổi nhóm: ${changed.promotions} · sản phẩm đổi nhóm: ${changed.products}`);
+        break;
+      }
+      case 'ai-classify': {
+        if (!hasAI) throw new Error('Chưa có APIMART_API_KEY trong .env');
+        const dryRun = Boolean(values['dry-run']);
+        const r = await aiClassifyShops({ limit: values.limit ? Number(values.limit) : undefined, dryRun });
+        for (const d of r.decisions) {
+          const label = d.slug ? `${CATEGORIES[d.slug].emoji} ${d.slug}` : '(không trả lời)';
+          console.log(`${label.padEnd(26)} ${d.platform.padEnd(7)} ${d.shopName} (${d.vouchers} mã)`);
+        }
+        console.log(
+          `\nĐã hỏi ${r.asked} shop · xếp được nhóm: ${r.classified} · không nhận ra: ${r.unknown} · ` +
+            `${r.usage.requests} lần gọi, ${r.usage.inputTokens} token vào / ${r.usage.outputTokens} token ra (${env.AI_MODEL})`,
+        );
+        if (!dryRun && r.asked) {
+          const changed = await reclassifyAll();
+          console.log(`Khuyến mãi đổi nhóm: ${changed.promotions} · sản phẩm đổi nhóm: ${changed.products}`);
+        }
         break;
       }
       case 'make-admin': {

@@ -39,6 +39,10 @@ Web: `pnpm web dev` (http://localhost:3000). Trang chính: `/`, `/voucher`, `/fl
 `packages/shared/src/categories.ts`. Worker phân loại bằng từ khoá có trọng số trên danh mục gốc của sàn, tiêu đề và tên shop
 (từ khoá viết không dấu nên phải dùng cụm đủ nghĩa: "giày/giấy", "sách/sạch", "lẩu/lâu"...). Mã chỉ có tên shop được
 gán theo nhóm chiếm đa số trong các sản phẩm đã thấy của shop đó (bảng `shop_categories`, cập nhật mỗi giờ).
+Shop chưa có sản phẩm nào thì nhờ **AI** đoán theo tên shop/thương hiệu (`apps/worker/src/core/ai.ts`): Claude Haiku 5.5
+qua APIMart (`APIMART_API_KEY`), mỗi lần gọi 40 shop, kết quả buộc trả qua tool `save_categories` và được kiểm tra lại
+bằng zod. AI chỉ gán khi khá chắc; shop AI không nhận ra được hỏi lại sau 14 ngày. Nhóm suy ra từ sản phẩm thật
+(`source = 'products'`) luôn ghi đè nhóm AI (`source = 'ai'`). Chạy ngay: `pnpm worker cli ai-classify [--dry-run]`.
 Sau khi sửa từ khoá: `pnpm worker cli reclassify`. Web: thanh lọc nhóm ở mọi trang, trang `/danh-muc`, API `?nhom=quan-ao`,
 bot `/nhom quan-ao,my-pham` và `/danhmuc`.
 

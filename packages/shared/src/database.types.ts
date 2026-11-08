@@ -209,14 +209,14 @@ isOneToOne: false
                   ]
                 },"shop_categories": {
                   Row: {
-                    "category_slug": string,"platform": Database["public"]['Enums']["platform"],"samples": number,"share": number,"shop_key": string,"shop_name": string,"updated_at": string
+                    "category_slug": string,"model": string | null,"platform": Database["public"]['Enums']["platform"],"samples": number,"share": number,"shop_key": string,"shop_name": string,"source": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "category_slug": string,"platform": Database["public"]['Enums']["platform"],"samples": number,"share": number,"shop_key": string,"shop_name": string,"updated_at"?: string
+                    "category_slug": string,"model"?: string | null,"platform": Database["public"]['Enums']["platform"],"samples": number,"share": number,"shop_key": string,"shop_name": string,"source"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "category_slug"?: string,"platform"?: Database["public"]['Enums']["platform"],"samples"?: number,"share"?: number,"shop_key"?: string,"shop_name"?: string,"updated_at"?: string
+                    "category_slug"?: string,"model"?: string | null,"platform"?: Database["public"]['Enums']["platform"],"samples"?: number,"share"?: number,"shop_key"?: string,"shop_name"?: string,"source"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     

@@ -30,6 +30,12 @@ const EnvSchema = z.object({
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
   /** Proxy dùng chung; có thể ghi đè theo sàn bằng PROXY_URL_SHOPEE, PROXY_URL_LAZADA... */
   PROXY_URL: z.string().optional(),
+  /** Key APIMart (cổng trung gian tương thích Claude Messages API) — dùng để AI phân loại nhóm theo tên shop. */
+  APIMART_API_KEY: z.string().min(1).optional(),
+  AI_BASE_URL: z.url().default('https://api.apimart.ai'),
+  AI_MODEL: z.string().min(1).default('claude-haiku-5-5'),
+  /** Số shop tối đa gửi cho AI mỗi lần bảo trì (giới hạn chi phí). */
+  AI_MAX_SHOPS_PER_RUN: z.coerce.number().int().min(0).default(400),
 });
 
 // Supabase API key kiểu mới (sb_secret_...) được chấp nhận như service role key.
@@ -45,3 +51,4 @@ export function proxyFor(platform: Platform): string | undefined {
 }
 
 export const hasDatabase = Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
+export const hasAI = Boolean(env.APIMART_API_KEY);

@@ -11,6 +11,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
     "@cp/shared": "workspace:*",
     "@supabase/supabase-js": "^2.119.0",
     "cheerio": "^1.2.0",
