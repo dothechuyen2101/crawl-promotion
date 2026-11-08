@@ -1,7 +1,10 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import type { NormalizedPromotionInput, Platform } from '@cp/shared';
 import { env } from '../../config.ts';
 import { check, db } from '../../core/db.ts';
 import { HttpError, httpJson } from '../../core/http.ts';
+import { alertAdmin, escapeHtml } from '../../core/telegram.ts';
 import { sleep } from '../../core/limiter.ts';
 import type { CrawlContext, Source } from '../../core/types.ts';
 import { endOfDayVN, parseDiscountText, startOfDayVN, str } from '../common.ts';
@@ -65,21 +68,26 @@ const merchantKey = (m: string | null | undefined) => (m ?? '').trim().toLowerCa
  * Lỗi API → dùng kết quả lần trước (mặc định rỗng = không gắn link affiliate, đi thẳng link gốc của sàn).
  */
 let lastApproved = new Set<string>();
+/** merchant → tên chiến dịch đã duyệt (để báo Telegram). */
+let lastApprovedNames = new Map<string, string>();
 /** Đã đọc được danh sách chiến dịch ít nhất 1 lần (chưa đọc được thì không dọn link). */
 let approvedKnown = false;
 async function approvedMerchants(ctx: CrawlContext): Promise<Set<string>> {
   try {
-    const merchants = new Set<string>();
+    const names = new Map<string, string>();
     for (let page = 1; page <= 20; page++) {
-      const res = await atGet<{ data?: { merchant?: string; approval?: string }[]; total_page?: number }>(ctx, CAMPAIGNS_API, 'shopee', {
+      const res = await atGet<{ data?: { merchant?: string; name?: string; approval?: string }[]; total_page?: number }>(ctx, CAMPAIGNS_API, 'shopee', {
         limit: PAGE_SIZE,
         page,
       });
-      for (const c of res.data ?? []) if (c.merchant && c.approval === 'successful') merchants.add(merchantKey(c.merchant));
+      for (const c of res.data ?? []) {
+        if (c.merchant && c.approval === 'successful') names.set(merchantKey(c.merchant), c.name?.trim() || c.merchant);
+      }
       if ((res.data ?? []).length < PAGE_SIZE || page >= (res.total_page ?? 1)) break;
       await sleep(1000, ctx.signal);
     }
-    lastApproved = merchants;
+    lastApprovedNames = names;
+    lastApproved = new Set(names.keys());
     approvedKnown = true;
   } catch (err) {
     if (ctx.signal.aborted) throw err;
@@ -208,6 +216,7 @@ const accesstrade: Source = {
    */
   async afterRun(ctx) {
     if (!approvedKnown) return;
+    await notifyApprovalChanges(ctx).catch((err) => ctx.log.warn({ err: String(err).slice(0, 200) }, 'accesstrade approval notify failed'));
     const stale: string[] = [];
     for (let from = 0; ; from += 1000) {
       const { data, error } = await db()
@@ -231,5 +240,59 @@ const accesstrade: Source = {
     if (stale.length) ctx.log.info({ cleared: stale.length }, 'accesstrade: bỏ link affiliate của chiến dịch chưa duyệt');
   },
 };
+
+/** So danh sách chiến dịch đã duyệt lần trước với lần này. */
+export function diffApprovals(prev: Record<string, string>, current: ReadonlyMap<string, string>) {
+  return {
+    added: [...current].filter(([m]) => !(m in prev)),
+    removed: Object.entries(prev).filter(([m]) => !current.has(m)),
+  };
+}
+
+/** File lưu danh sách chiến dịch đã duyệt (nằm trong DATA_DIR, giữ lại khi build lại container). */
+const approvalStatePath = () => join(env.DATA_DIR, 'accesstrade-approved.json');
+
+/**
+ * Báo Telegram cho admin khi có chiến dịch AccessTrade mới được duyệt (link affiliate bắt đầu được gắn)
+ * hoặc bị bỏ duyệt (link affiliate bị gỡ). Lần đầu chưa có file trạng thái thì chỉ ghi lại, không báo.
+ */
+async function notifyApprovalChanges(ctx: CrawlContext) {
+  const path = approvalStatePath();
+  let prev: Record<string, string> | null = null;
+  try {
+    prev = JSON.parse(await readFile(path, 'utf8')) as Record<string, string>;
+  } catch {
+    prev = null;
+  }
+  const current = new Map(lastApprovedNames);
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, JSON.stringify(Object.fromEntries(current), null, 2));
+  if (!prev) return;
+
+  const { added, removed } = diffApprovals(prev, current);
+  if (!added.length && !removed.length) return;
+  ctx.log.info({ added: added.map(([m]) => m), removed: removed.map(([m]) => m) }, 'accesstrade approval changed');
+
+  const lines: string[] = [];
+  if (added.length) {
+    lines.push('✅ <b>AccessTrade đã duyệt chiến dịch</b>');
+    for (const [m, name] of added) {
+      const { count } = await db()
+        .from('promotions')
+        .select('id', { count: 'exact', head: true })
+        .eq('source', accesstrade.id)
+        .eq('conditions->>merchant', m)
+        .not('affiliate_url', 'is', null)
+        .neq('status', 'expired');
+      lines.push(`• ${escapeHtml(name)} (<code>${escapeHtml(m)}</code>) — đã gắn link affiliate cho ${count ?? 0} mã`);
+    }
+  }
+  if (removed.length) {
+    if (lines.length) lines.push('');
+    lines.push('⚠️ <b>AccessTrade không còn duyệt chiến dịch</b>');
+    for (const [m, name] of removed) lines.push(`• ${escapeHtml(name)} (<code>${escapeHtml(m)}</code>) — đã gỡ link affiliate, nút "Dùng mã" đi thẳng link sàn`);
+  }
+  await alertAdmin(lines.join('\n'));
+}
 
 export const accesstradeSources: Source[] = [accesstrade];

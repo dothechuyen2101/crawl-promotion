@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { NormalizedPromotionSchema } from '@cp/shared';
 import { describe, expect, it } from 'vitest';
-import { offerToPromotions, splitOfferName, type AtOffer } from '../src/sources/accesstrade/index.ts';
+import { diffApprovals, offerToPromotions, splitOfferName, type AtOffer } from '../src/sources/accesstrade/index.ts';
 import { paymentPartner, parseBePromoList } from '../src/sources/be/index.ts';
 import { endOfDayVN, parseDiscountText } from '../src/sources/common.ts';
 
@@ -38,6 +38,19 @@ describe('accesstrade', () => {
     const [p] = offerToPromotions({ ...base, coupons: ['SPXX15'] }, 'shopee', new Set(['tiktok_cps']));
     expect(p!.affiliateUrl).toBeNull();
     expect(p!.url).toBe('https://shopee.vn/m/ma-giam-gia');
+  });
+
+  it('phát hiện chiến dịch mới được duyệt / bị bỏ duyệt', () => {
+    const prev = { tiktok_cps: 'TIKTOK SHOP CPS', lazada_kol: 'Lazada Việt Nam' };
+    const current = new Map([
+      ['tiktok_cps', 'TIKTOK SHOP CPS'],
+      ['shopee', 'Shopee Việt Nam Smartlink cho tất cả thiết bị'],
+    ]);
+    expect(diffApprovals(prev, current)).toEqual({
+      added: [['shopee', 'Shopee Việt Nam Smartlink cho tất cả thiết bị']],
+      removed: [['lazada_kol', 'Lazada Việt Nam']],
+    });
+    expect(diffApprovals({ tiktok_cps: 'x' }, new Map([['tiktok_cps', 'x']]))).toEqual({ added: [], removed: [] });
   });
 
   it('so merchant không phân biệt hoa thường', () => {
