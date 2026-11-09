@@ -303,6 +303,9 @@ isOneToOne: false
 "is_admin":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"purge_expired_vouchers":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "refresh_promotion_status":
 { Args: Record<PropertyKey, never>; Returns: undefined
                            }
