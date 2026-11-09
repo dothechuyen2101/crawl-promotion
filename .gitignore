@@ -11,6 +11,9 @@ coverage/
 
 # worker runtime data (browser profiles contain login sessions)
 apps/worker/data/
+# chứng chỉ CA riêng từng máy (xem apps/worker/Dockerfile)
+apps/worker/certs/*
+!apps/worker/certs/.gitkeep
 supabase/.temp/
 supabase/.branches/
 .vercel
